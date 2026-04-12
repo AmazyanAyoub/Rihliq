@@ -1,0 +1,1 @@
+# RapidAPI Hotels — search hotels
