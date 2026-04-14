@@ -1,1 +1,1 @@
-# ChromaDB client + nomic-embed-text via Ollama
+# Supabase pgvector — generate embeddings via OpenAI, store/query via pgvector

@@ -1,1 +1,1 @@
-# ChromaDB semantic search over restaurant data
+# Supabase pgvector semantic search — no local JSON reads at runtime

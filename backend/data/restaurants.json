@@ -1,3 +1,4 @@
 {
+  "_note": "Seed data only — used once by backend/scripts/seed_restaurants.py to populate Supabase. Never read at runtime.",
   "restaurants": []
 }
