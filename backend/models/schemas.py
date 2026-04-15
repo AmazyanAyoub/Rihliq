@@ -59,14 +59,19 @@ class HotelSearchRequest(BaseModel):
 class Hotel(BaseModel):
     id: str
     name: str
-    address: str
-    rating: Optional[float] = None
-    stars: Optional[int] = None
-    price_per_night: Optional[float] = None
-    currency: str = "USD"
+    rating: Optional[int] = None            # stars 1-5
+    review_score: Optional[float] = None    # score 1-10
+    review_count: Optional[int] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    photos: List[str] = []
     amenities: List[str] = []
-    image_url: Optional[str] = None
-    description: Optional[str] = None
+    cheapest_price: Optional[float] = None
+    currency: str = "USD"
+    check_in_date: Optional[str] = None
+    check_out_date: Optional[str] = None
 
 
 # ─── Restaurants ──────────────────────────────────────────────────────────────
