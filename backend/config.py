@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # Hotel API
     rapidapi_key: str = ""
 
+    # Restaurant API
+    foursquare_api_key: str = ""
+    google_maps_api_key: str = ""
+
     # Optional scraping
     brightdata_api_key: str = ""
 
