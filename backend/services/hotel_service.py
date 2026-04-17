@@ -96,26 +96,13 @@ async def search_hotels(request: HotelSearchRequest) -> List[Hotel]:
 
         hotels: List[Hotel] = []
         for prop in properties[:20]:
-            # ── Price ──
+            # --- Price ---
             price = prop.get("min_total_price") or prop.get("composite_price_breakdown", {}).get(
                 "gross_amount_per_night", {}
             ).get("value")
 
-            # ── Star rating ──
-            star_rating = prop.get("class")  # 1-5
-
-            # ── Reviews ──
-            review_score = prop.get("review_score")          # e.g. 8.5
-            review_count = prop.get("review_nr")             # e.g. 1234
-            review_word  = prop.get("review_score_word", "") # e.g. "Excellent"
-
-            # ── Location ──
-            latitude  = prop.get("latitude")
-            longitude = prop.get("longitude")
-
-            # ── Photo ──
+            # --- Photo ---
             photo_url = prop.get("main_photo_url") or prop.get("max_photo_url")
-            # Booking often gives a "square60" thumb; swap for a larger size
             if photo_url:
                 photo_url = photo_url.replace("square60", "square600")
             photos = [photo_url] if photo_url else []
@@ -123,19 +110,26 @@ async def search_hotels(request: HotelSearchRequest) -> List[Hotel]:
             hotels.append(Hotel(
                 id=str(prop.get("hotel_id", "")),
                 name=prop.get("hotel_name") or prop.get("hotel_name_trans", "Unknown Hotel"),
-                rating=int(star_rating) if star_rating else None,
-                review_score=float(review_score) if review_score else None,
-                review_count=int(review_count) if review_count else None,
-                address=prop.get("address") or prop.get("address_trans"),
-                city=prop.get("city") or prop.get("city_trans") or request.destination,
-                latitude=float(latitude) if latitude else None,
-                longitude=float(longitude) if longitude else None,
+                rating=int(prop.get("class")) if prop.get("class") else None,
+                review_score=float(prop.get("review_score")) if prop.get("review_score") else None,
+                review_count=int(prop.get("review_nr")) if prop.get("review_nr") else None,
+                review_word=prop.get("review_score_word"),
+                location={
+                    "latitude": float(prop.get("latitude")) if prop.get("latitude") else None,
+                    "longitude": float(prop.get("longitude")) if prop.get("longitude") else None,
+                    "address": prop.get("address") or prop.get("address_trans"),
+                    "city": prop.get("city") or prop.get("city_trans") or request.destination,
+                    "country": prop.get("country_trans")
+                },
                 photos=photos,
-                amenities=[],                         # details endpoint needed for full amenities
+                amenities=[],
                 cheapest_price=float(price) if price else None,
-                currency=prop.get("currency_code") or prop.get("currencycode") or "USD",
+                currency=prop.get("currency_code") or "USD",
                 check_in_date=request.check_in,
                 check_out_date=request.check_out,
+                is_free_cancellable=bool(prop.get("is_free_cancellable")),
+                distance_from_center=prop.get("distance_to_cc"),
+                checkin_times=prop.get("checkin")
             ))
 
         return hotels if hotels else _mock_hotels(request)
@@ -148,7 +142,7 @@ async def search_hotels(request: HotelSearchRequest) -> List[Hotel]:
         return _mock_hotels(request)
 
 
-# ── Fallback mock data ──────────────────────────────────────────────
+# --- Fallback mock data ──────────────────────────────────────────────
 def _mock_hotels(request: HotelSearchRequest) -> List[Hotel]:
     return [
         Hotel(
@@ -157,16 +151,21 @@ def _mock_hotels(request: HotelSearchRequest) -> List[Hotel]:
             rating=5,
             review_score=9.2,
             review_count=1840,
-            address=f"123 Main Street, {request.destination}",
-            city=request.destination,
-            latitude=None,
-            longitude=None,
-            photos=[],
+            review_word="Excellent",
+            location={
+                "address": f"123 Main Street, {request.destination}",
+                "city": request.destination,
+                "country": "France"
+            },
+            photos=["https://r-xx.bstatic.com/xdata/images/hotel/max600/1.jpg"],
             amenities=["WiFi", "Pool", "Gym", "Spa", "Restaurant", "Room Service"],
             cheapest_price=189.00,
             currency="USD",
             check_in_date=request.check_in,
             check_out_date=request.check_out,
+            is_free_cancellable=True,
+            distance_from_center="1.2 km",
+            checkin_times={"from": "14:00", "until": "00:00"}
         ),
         Hotel(
             id="mock-hotel-2",
@@ -174,32 +173,20 @@ def _mock_hotels(request: HotelSearchRequest) -> List[Hotel]:
             rating=3,
             review_score=7.8,
             review_count=632,
-            address=f"456 Travel Road, {request.destination}",
-            city=request.destination,
-            latitude=None,
-            longitude=None,
-            photos=[],
+            review_word="Good",
+            location={
+                "address": f"456 Travel Road, {request.destination}",
+                "city": request.destination,
+                "country": "France"
+            },
+            photos=["https://r-xx.bstatic.com/xdata/images/hotel/max600/2.jpg"],
             amenities=["WiFi", "Breakfast Included", "Parking"],
             cheapest_price=89.00,
             currency="USD",
             check_in_date=request.check_in,
             check_out_date=request.check_out,
-        ),
-        Hotel(
-            id="mock-hotel-3",
-            name="Boutique Stay",
-            rating=4,
-            review_score=8.5,
-            review_count=410,
-            address=f"789 Culture Lane, {request.destination}",
-            city=request.destination,
-            latitude=None,
-            longitude=None,
-            photos=[],
-            amenities=["WiFi", "Bar", "Concierge", "Room Service", "Airport Shuttle"],
-            cheapest_price=145.00,
-            currency="USD",
-            check_in_date=request.check_in,
-            check_out_date=request.check_out,
-        ),
+            is_free_cancellable=False,
+            distance_from_center="3.5 km",
+            checkin_times={"from": "15:00", "until": "22:00"}
+        )
     ]

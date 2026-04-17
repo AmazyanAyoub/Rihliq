@@ -84,7 +84,7 @@ async def search_flights(request: FlightSearchRequest) -> List[Flight]:
                 params={
                     "offer_request_id": offer_request_id,
                     "limit":            20,
-                    "sort":             "total_amount",
+                    "sort":      "total_amount",
                 },
             )
             offers_res.raise_for_status()
@@ -96,11 +96,21 @@ async def search_flights(request: FlightSearchRequest) -> List[Flight]:
             segments  = slice_out["segments"]
             first     = segments[0]
             last      = segments[-1]
+            
+            # Extract baggage for the first passenger
+            baggage_info = []
+            if "passengers" in first and first["passengers"]:
+                for bag in first["passengers"][0].get("baggages", []):
+                    baggage_info.append({
+                        "type": bag.get("type"),
+                        "quantity": bag.get("quantity")
+                    })
 
             flights.append(Flight(
                 id=offer["id"],
                 airline=first["operating_carrier"]["name"],
                 airline_code=first["operating_carrier"]["iata_code"],
+                airline_logo=first["operating_carrier"].get("logo_symbol_url"),
                 flight_number=f"{first['operating_carrier']['iata_code']}{first['operating_carrier_flight_number']}",
                 origin=first["origin"]["iata_code"],
                 destination=last["destination"]["iata_code"],
@@ -111,6 +121,9 @@ async def search_flights(request: FlightSearchRequest) -> List[Flight]:
                 price=float(offer["total_amount"]),
                 currency=offer["total_currency"],
                 travel_class=request.travel_class,
+                baggage=baggage_info,
+                carbon_emissions_kg=float(offer.get("total_emissions_kg", 0)) if offer.get("total_emissions_kg") else None,
+                fare_brand=slice_out.get("fare_brand_name")
             ))
 
         return flights
@@ -129,6 +142,7 @@ def _mock_flights(request: FlightSearchRequest) -> List[Flight]:
             id="mock-1",
             airline="American Airlines",
             airline_code="AA",
+            airline_logo="https://assets.duffel.com/img/airlines/for-light-background/full-color-logo/AA.svg",
             flight_number="AA100",
             origin=request.origin.upper(),
             destination=request.destination.upper(),
@@ -139,11 +153,15 @@ def _mock_flights(request: FlightSearchRequest) -> List[Flight]:
             price=450.00,
             currency="USD",
             travel_class=request.travel_class,
+            baggage=[{"type": "carry_on", "quantity": 1}, {"type": "checked", "quantity": 1}],
+            carbon_emissions_kg=540.0,
+            fare_brand="Main Cabin"
         ),
         Flight(
             id="mock-2",
             airline="Delta Air Lines",
             airline_code="DL",
+            airline_logo="https://assets.duffel.com/img/airlines/for-light-background/full-color-logo/DL.svg",
             flight_number="DL205",
             origin=request.origin.upper(),
             destination=request.destination.upper(),
@@ -154,20 +172,8 @@ def _mock_flights(request: FlightSearchRequest) -> List[Flight]:
             price=320.00,
             currency="USD",
             travel_class=request.travel_class,
-        ),
-        Flight(
-            id="mock-3",
-            airline="United Airlines",
-            airline_code="UA",
-            flight_number="UA450",
-            origin=request.origin.upper(),
-            destination=request.destination.upper(),
-            departure_time=f"{request.departure_date}T15:00:00",
-            arrival_time=f"{request.departure_date}T22:15:00",
-            duration="7h 15m",
-            stops=0,
-            price=520.00,
-            currency="USD",
-            travel_class=request.travel_class,
-        ),
+            baggage=[{"type": "carry_on", "quantity": 1}],
+            carbon_emissions_kg=610.0,
+            fare_brand="Basic Economy"
+        )
     ]

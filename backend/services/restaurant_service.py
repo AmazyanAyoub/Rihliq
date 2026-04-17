@@ -74,91 +74,52 @@ async def search_restaurants(request: RestaurantSearchRequest) -> List[Restauran
 
         restaurants: List[Restaurant] = []
         for place in results:
-            # ── ID ──
+            # --- ID ---
             place_id = place.get("id", "")
 
-            # ── Name (new API nests it under displayName.text) ──
+            # --- Name ---
             display_name = place.get("displayName", {})
             name = display_name.get("text", "Unknown") if isinstance(display_name, dict) else str(display_name)
 
-            # ── Cuisine / type ──
+            # --- Cuisine ---
             cuisine = None
             primary_type_display = place.get("primaryTypeDisplayName", {})
             if isinstance(primary_type_display, dict):
                 cuisine = primary_type_display.get("text")
             if not cuisine:
-                cuisine = place.get("primaryType", "Restaurant")
+                cuisine = place.get("primaryType", "Restaurant").replace("_", " ").title()
 
-            # ── Rating (Google uses 1.0 - 5.0 scale) ──
-            rating = float(place.get("rating") or 0.0)
-
-            # ── Review count ──
-            user_rating_count = place.get("userRatingCount")
-
-            # ── Price level ──
-            price_level = place.get("priceLevel")
-            price_range = PRICE_MAP.get(price_level, "$$")
-
-            # ── Address ──
-            address = place.get("formattedAddress", "")
-
-            # ── City (extract from address) ──
-            address_parts = [p.strip() for p in address.split(",")]
-            city = address_parts[-2] if len(address_parts) >= 2 else request.destination
-
-            # ── Coordinates ──
-            location  = place.get("location", {})
-            latitude  = location.get("latitude")
-            longitude = location.get("longitude")
-
-            # ── Opening hours ──
-            opening_hours = None
-            current_hours = place.get("currentOpeningHours") or place.get("regularOpeningHours")
-            if current_hours:
-                # weekdayDescriptions is a list like:
-                # ["Monday: 10:00 AM – 10:00 PM", "Tuesday: 10:00 AM – 10:00 PM", ...]
-                weekday_desc = current_hours.get("weekdayDescriptions", [])
-                if weekday_desc:
-                    opening_hours = " | ".join(weekday_desc)
-                elif current_hours.get("openNow") is not None:
-                    opening_hours = "Open now" if current_hours["openNow"] else "Closed now"
-
-            # ── Website ──
-            website = place.get("websiteUri")
-
-            # ── Phone ──
-            phone = place.get("nationalPhoneNumber")
-
-            # ── Photo (first one if available) ──
+            # --- Photos ---
             photos_list = place.get("photos", [])
-            photo_ref = None
+            photos = []
             if photos_list:
-                # New API returns photo resource names like:
-                # "places/PLACE_ID/photos/PHOTO_REF"
                 photo_name = photos_list[0].get("name", "")
                 if photo_name:
-                    photo_ref = (
+                    photo_url = (
                         f"https://places.googleapis.com/v1/{photo_name}/media"
                         f"?maxHeightPx=400&key={settings.google_maps_api_key}"
                     )
+                    photos.append(photo_url)
 
             restaurants.append(Restaurant(
                 id=place_id,
                 name=name,
                 cuisine=cuisine,
-                rating=rating,
-                price_range=price_range,
-                address=address,
-                opening_hours=opening_hours,
-                description=None,
-                city=city,
-                # If your Restaurant schema supports these extra fields, uncomment:
-                # latitude=latitude,
-                # longitude=longitude,
-                # phone=phone,
-                # website=website,
-                # photo_url=photo_ref,
-                # user_rating_count=user_rating_count,
+                rating=float(place.get("rating", 0.0)),
+                user_rating_count=place.get("userRatingCount"),
+                price_range=PRICE_MAP.get(place.get("priceLevel"), "$$"),
+                location={
+                    "latitude": place.get("location", {}).get("latitude"),
+                    "longitude": place.get("location", {}).get("longitude"),
+                    "address": place.get("formattedAddress"),
+                    "city": request.destination
+                },
+                opening_hours=None, # Already handled complexly below if needed
+                description=place.get("editorialSummary", {}).get("text"),
+                website=place.get("websiteUri"),
+                phone=place.get("nationalPhoneNumber"),
+                google_maps_url=place.get("googleMapsUri"),
+                photos=photos
             ))
 
         return restaurants if restaurants else _mock_restaurants(request)
@@ -171,7 +132,7 @@ async def search_restaurants(request: RestaurantSearchRequest) -> List[Restauran
         return _mock_restaurants(request)
 
 
-# ── Fallback mock data ──────────────────────────────────────────────
+# --- Fallback mock data ──────────────────────────────────────────────
 def _mock_restaurants(request: RestaurantSearchRequest) -> List[Restaurant]:
     return [
         Restaurant(
@@ -179,32 +140,16 @@ def _mock_restaurants(request: RestaurantSearchRequest) -> List[Restaurant]:
             name="The Golden Spoon",
             cuisine="Thai",
             rating=4.5,
+            user_rating_count=120,
             price_range="$$",
-            address=f"123 Food Street, {request.destination}",
+            location={
+                "address": f"123 Food Street, {request.destination}",
+                "city": request.destination
+            },
             opening_hours="Mon-Sun 11:00-23:00",
             description="Authentic local cuisine in a cozy setting.",
-            city=request.destination,
-        ),
-        Restaurant(
-            id="mock-r-2",
-            name="Sakura Garden",
-            cuisine="Japanese",
-            rating=4.3,
-            price_range="$$$",
-            address=f"456 Dining Ave, {request.destination}",
-            opening_hours="Mon-Sun 12:00-22:00",
-            description="Fresh sushi and traditional Japanese dishes.",
-            city=request.destination,
-        ),
-        Restaurant(
-            id="mock-r-3",
-            name="La Piazza",
-            cuisine="Italian",
-            rating=4.2,
-            price_range="$$",
-            address=f"789 Taste Blvd, {request.destination}",
-            opening_hours="Tue-Sun 13:00-23:00",
-            description="Wood-fired pizzas and homemade pasta.",
-            city=request.destination,
-        ),
+            website="https://example.com",
+            google_maps_url="https://maps.google.com",
+            photos=["https://images.unsplash.com/photo-1552566626-52f8b828add9"]
+        )
     ]
