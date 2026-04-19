@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
-from models.schemas import TripParseRequest, TripDetails
-from services.nlp_parser import nlp_parser
+from models.schemas import TripParseRequest, AgentState
+from services.travel_assistant import travel_assistant
 
 router = APIRouter()
 
-
-@router.post("/parse", response_model=TripDetails)
-async def parse_trip(request: TripParseRequest):
+@router.post("/process")
+async def process_trip(request: TripParseRequest):
     try:
-        trip = await nlp_parser.parse_trip(request.query)
-        return trip
+        # Initial processing of a natural language query
+        state = await travel_assistant.process_message(request.query, thread_id="default")
+        return state
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse trip: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process trip: {str(e)}")

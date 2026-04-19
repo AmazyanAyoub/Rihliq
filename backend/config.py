@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
 
+    google_api_key: str = ""  # For Google Places in restaurant service, and potentially other Google APIs
+
+    GROQ_API_KEY: str = ""  # For Groq vector search if used in the future
+
     # App
     frontend_url: str = "http://localhost:5173"
 
