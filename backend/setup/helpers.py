@@ -3,7 +3,7 @@ from typing import Optional
 
 from models.schemas import AgentState
 from models.schemas import AgentState
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
 def _last_user_text(state: AgentState) -> str:
@@ -12,40 +12,45 @@ def _last_user_text(state: AgentState) -> str:
             return m.content
     return ""
 
+def _last_ai_text(state: AgentState) -> str:
+    for m in reversed(state.messages):
+        if isinstance(m, AIMessage):
+            return m.content
+    return ""
 
 def _merge(old: BaseModel, new: BaseModel) -> BaseModel:
     """Keep old values when new ones are empty."""
     merged = old.model_dump()
     for k, v in new.model_dump().items():
-        if v not in (None, "", [], 0):
+        if v not in (None, "", []):
             merged[k] = v
     return type(old)(**merged)
 
 
-def resolve_pick(pick: str, items: list) -> Optional[str]:
-    """Match user input to an item id. Tries number, exact id, then name substring."""
-    if not pick or not items:
-        return None
-    pick = pick.strip().lower()
+# def resolve_pick(pick: str, items: list) -> Optional[str]:
+#     """Match user input to an item id. Tries number, exact id, then name substring."""
+#     if not pick or not items:
+#         return None
+#     pick = pick.strip().lower()
 
-    # Try: "2" → items[1].id
-    if pick.isdigit():
-        idx = int(pick) - 1
-        if 0 <= idx < len(items):
-            return items[idx].id
+#     # Try: "2" → items[1].id
+#     if pick.isdigit():
+#         idx = int(pick) - 1
+#         if 0 <= idx < len(items):
+#             return items[idx].id
 
-    # Try: exact id match
-    for item in items:
-        if item.id.lower() == pick:
-            return item.id
+#     # Try: exact id match
+#     for item in items:
+#         if item.id.lower() == pick:
+#             return item.id
 
-    # Try: name substring match
-    for item in items:
-        name = getattr(item, "name", None) or getattr(item, "airline", "")
-        if pick in name.lower():
-            return item.id
+#     # Try: name substring match
+#     for item in items:
+#         name = getattr(item, "name", None) or getattr(item, "airline", "")
+#         if pick in name.lower():
+#             return item.id
 
-    return None
+#     return None
 
 
 def _chat_brief(state: AgentState) -> str:

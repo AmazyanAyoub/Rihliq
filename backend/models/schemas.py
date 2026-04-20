@@ -53,7 +53,7 @@ class TripSlots(BaseModel):
     budget: Optional[str] = None
     trip_type: Optional[str] = None
     preferences: List[str] = []
-
+    check_in: Optional[str] = None
     num_nights: Optional[int] = None
     wants_flights: bool = False
     wants_hotels: bool = False

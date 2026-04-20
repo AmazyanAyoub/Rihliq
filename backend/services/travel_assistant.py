@@ -43,6 +43,21 @@ def create_travel_graph():
 
     return g.compile(checkpointer=MemorySaver())
 
+async def stream(self, message: str, trip_context: dict = None, history: list = None):
+    config = {"configurable": {"thread_id": trip_context.get("thread_id", "default") if trip_context else "default"}}
+    
+    async for chunk in self.graph.astream(
+        {"messages": [HumanMessage(content=message)]},
+        config=config,
+        stream_mode="values",
+    ):
+        # Extract the last AI message token
+        msgs = chunk.get("messages", [])
+        if msgs:
+            last = msgs[-1]
+            if hasattr(last, "content") and isinstance(last.content, str):
+                yield last.content
+
 # ─── INTERFACE ────────────────────────────────────────────────────────────────
 
 class TravelAssistant:
