@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Union, Literal, Annotated
+from typing import Dict, Optional, List, Annotated
 from langgraph.graph.message import add_messages
 
 
@@ -19,6 +19,7 @@ class Location(BaseModel):
 class FlightBaggage(BaseModel):
     type: str
     quantity: int
+
 
 class Flight(BaseModel):
     id: str
@@ -39,6 +40,50 @@ class Flight(BaseModel):
     carbon_emissions_kg: Optional[float] = None
     fare_brand: Optional[str] = None
 
+
+# ─── Trip Slots & Selections ──────────────────────────────────────────────────
+
+class TripSlots(BaseModel):
+    origin: Optional[str] = None
+    destination: Optional[str] = None
+    departure_date: Optional[str] = None
+    return_date: Optional[str] = None
+    num_travelers: Optional[int] = None
+    travel_class: str = "ECONOMY"
+    budget: Optional[str] = None
+    trip_type: Optional[str] = None
+    preferences: List[str] = []
+
+    num_nights: Optional[int] = None
+    wants_flights: bool = False
+    wants_hotels: bool = False
+
+
+class TripSelections(BaseModel):
+    selected_flight_id: Optional[str] = None
+    selected_hotel_id: Optional[str] = None
+
+# ─── LangGraph State ──────────────────────────────────────────────────────────
+
+class AgentState(BaseModel):
+    """The global state carried through the LangGraph."""
+    slots: TripSlots = Field(default_factory=TripSlots)
+    selections: TripSelections = Field(default_factory=TripSelections)
+
+    # Typed Results
+    flights: List[Flight] = []
+    flight_confirmed: bool = False
+
+    # Message History (auto-accumulating)
+    messages: Annotated[list, add_messages] = []
+
+    next_question: Optional[str] = None
+    is_complete: bool = False
+
+    hotels: List[Hotel] = []
+    hotels_confirmed: bool = False
+
+
 class Hotel(BaseModel):
     id: str
     name: str
@@ -57,93 +102,15 @@ class Hotel(BaseModel):
     distance_from_center: Optional[str] = None
     checkin_times: Optional[Dict[str, str]] = None
 
-class Restaurant(BaseModel):
-    id: str
-    name: str
-    cuisine: Optional[str] = None
-    rating: Optional[float] = None
-    user_rating_count: Optional[int] = None
-    price_range: Optional[str] = None
-    location: Location
-    opening_hours: Optional[str] = None
-    description: Optional[str] = None
-    website: Optional[str] = None
-    phone: Optional[str] = None
-    google_maps_url: Optional[str] = None
-    photos: List[str] = []
 
-
-# ─── Trip Slots & Selections ──────────────────────────────────────────────────
-
-class TripDetails(BaseModel):
-    origin: Optional[str] = None
-    destination: Optional[str] = None
-    departure_date: Optional[str] = None
-    return_date: Optional[str] = None
-    num_travelers: Optional[int] = None
-    travel_class: str = "ECONOMY"
-    preferences: List[str] = []
-    budget: Optional[str] = None
-    trip_type: Optional[str] = None
-
-class TripSlots(BaseModel):
-    origin: Optional[str] = None
-    destination: Optional[str] = None
-    departure_date: Optional[str] = None
-    return_date: Optional[str] = None
-    num_nights: Optional[int] = None
-    num_travelers: Optional[int] = None
-    travel_class: str = "ECONOMY"
-    budget: Optional[str] = None
-    trip_type: Optional[str] = None
-    preferences: List[str] = []
-    wants_flights: bool = False
-    wants_hotels: bool = False
-    wants_restaurants: bool = False
-    cuisine_preference: Optional[str] = None
-
-class TripSelections(BaseModel):
-    selected_flight_id: Optional[str] = None
-    selected_hotel_id: Optional[str] = None
-    # selected_restaurant_ids: List[str] = []
-
-
-# ─── LangGraph State ──────────────────────────────────────────────────────────
-
-class AgentState(BaseModel):
-    """The global state carried through the LangGraph."""
-    slots: TripSlots = Field(default_factory=TripSlots)
-    selections: TripSelections = Field(default_factory=TripSelections)
-    
-    # Typed Results
-    flights: List[Flight] = []
-    hotels: List[Hotel] = []
-    restaurants: List[Restaurant] = []
-    
-    # Flow Control
-    current_phase: Literal["flights", "hotels", "restaurants", "summary", "done"] = "flights"
-    user_wants_next_phase: Optional[bool] = None
-    
-    # Message History (Annotated for automatic accumulation)
-    messages: Annotated[list, add_messages] = []
-    
-    next_question: Optional[str] = None
-    is_complete: bool = False
-    trip_confirmed: bool = False
-
-    hotels_confirmed: bool = False
-    restaurants_confirmed: bool = False
-
+class HotelSearchRequest(BaseModel):
+    destination: str
+    check_in: str
+    check_out: str
+    num_guests: Optional[int] = None
+    num_rooms: int = 1
 
 # ─── Requests ─────────────────────────────────────────────────────────────────
-
-class TripParseRequest(BaseModel):
-    query: str
-
-class ChatRequest(BaseModel):
-    message: str
-    history: List[Dict[str, str]] = []
-    current_state: Optional[AgentState] = None
 
 class FlightSearchRequest(BaseModel):
     origin: str
@@ -153,16 +120,5 @@ class FlightSearchRequest(BaseModel):
     num_travelers: Optional[int] = None
     travel_class: str = "ECONOMY"
 
-class HotelSearchRequest(BaseModel):
-    destination: str
-    check_in: str
-    check_out: str
-    num_guests: Optional[int] = None
-    num_rooms: int = 1
 
-class RestaurantSearchRequest(BaseModel):
-    query: str
-    destination: str
-    limit: int = 10
-
-
+AgentState.model_rebuild()

@@ -28,6 +28,19 @@ def _get_headers() -> dict:
         "Accept":         "application/json",
     }
 
+def _parse_duration(iso: str) -> str:
+    if not iso:
+        return ""
+    iso = iso.replace("PT", "")
+    result = ""
+    if "H" in iso:
+        parts = iso.split("H")
+        result += f"{parts[0]}h "
+        iso = parts[1]
+    if "M" in iso:
+        result += f"{iso.replace('M', '')}m"
+    return result.strip()
+
 
 async def _resolve_to_iata(client: httpx.AsyncClient, name: str) -> str:
     """Resolve any city/airport name to IATA via Duffel Places. Raises on failure."""
@@ -61,20 +74,6 @@ async def _resolve_to_iata(client: httpx.AsyncClient, name: str) -> str:
             return code
 
     raise FlightSearchError(f"Could not find airport for '{name}'")
-
-
-def _parse_duration(iso: str) -> str:
-    if not iso:
-        return ""
-    iso = iso.replace("PT", "")
-    result = ""
-    if "H" in iso:
-        parts = iso.split("H")
-        result += f"{parts[0]}h "
-        iso = parts[1]
-    if "M" in iso:
-        result += f"{iso.replace('M', '')}m"
-    return result.strip()
 
 
 async def search_flights(request: FlightSearchRequest) -> List[Flight]:
